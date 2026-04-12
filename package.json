@@ -28,7 +28,7 @@
     "README.md"
   ],
   "author": "Dr Hamid MADANI <drmdh@msn.com>",
-  "license": "MIT",
+  "license": "AGPL-3.0-or-later",
   "peerDependencies": {
     "pm2": ">=5.0.0"
   },
