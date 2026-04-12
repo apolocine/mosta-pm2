@@ -1,6 +1,6 @@
 {
   "name": "@mostajs/pm2",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "PM2 process manager wrapper for @mostajs admin portal",
   "type": "module",
   "main": "dist/index.js",
