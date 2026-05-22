@@ -1,0 +1,82 @@
+# @mostajs/pm2 — fiche LLM
+> Wrapper du gestionnaire de processus PM2 pour le portail admin @mostajs.
+
+- Version: 0.1.2 · Licence: AGPL-3.0-or-later · Auteur: Dr Hamid MADANI <drmdh@msn.com>
+- Chemin: mostajs/mosta-pm2 · Statut audit: complet (dist/)
+
+## RÔLE
+Encapsule l'API programmatique de PM2 derrière une interface typée et propre, utilisable
+par le portail d'administration @mostajs. Fournit un client (lister, décrire, démarrer,
+arrêter, redémarrer, supprimer des process, vider les logs, lire les métriques) et des
+handlers HTTP retournant des objets Response prêts à monter sur une route. PM2 est une
+dépendance peer optionnelle.
+
+## INSTALLATION
+npm i @mostajs/pm2
+
+## EXPORTS
+- Racine: moduleInfo ; types ProcessStatus, Pm2ProcessDTO, Pm2Config, Pm2LogEntry, Pm2Metrics
+- Server: Pm2Client (classe), createPm2Handlers, getSchemas, moduleInfo, pm2Registration
+
+## EXPORTS PAR SOUS-CHEMIN
+- @mostajs/pm2 (racine) : types + moduleInfo, sans dépendance à PM2.
+- @mostajs/pm2/server : implémentation — Pm2Client, createPm2Handlers (handlers HTTP), getSchemas, pm2Registration (enregistrement de module).
+
+## API — SIGNATURES
+- class Pm2Client:
+  connect(): Promise<void> ; disconnect(): Promise<void>
+  list(): Promise<Pm2ProcessDTO[]>
+  describe(name): Promise<Pm2ProcessDTO | null>
+  start(config: Pm2Config): Promise<void>
+  stop(name): Promise<void> ; restart(name): Promise<void> ; delete(name): Promise<void>
+  flush(name): Promise<void>  // vide les logs
+  metrics(): Promise<Pm2Metrics>
+  get isConnected(): boolean
+- createPm2Handlers(client?: Pm2Client): {
+    listProcesses(): Promise<Response>
+    describeProcess(name): Promise<Response>
+    startProcess(name, config?: Pm2Config): Promise<Response>
+    stopProcess(name): Promise<Response>
+    restartProcess(name): Promise<Response>
+    deleteProcess(name): Promise<Response>
+    flushLogs(name): Promise<Response>
+    getMetrics(): Promise<Response>
+    client: Pm2Client
+  }
+
+## TYPES CLÉS
+- ProcessStatus = 'online' | 'stopping' | 'stopped' | 'launching' | 'errored' | 'one-launch-status'
+- Pm2ProcessDTO { name; pid; pm_id; status: ProcessStatus; cpu; memory; uptime; restarts; unstableRestarts; createdAt }
+- Pm2Config { script: string; name: string; cwd?; args?; instances?; exec_mode?: 'fork'|'cluster'; max_memory_restart?; env?: Record<string,string> }
+- Pm2LogEntry { type: 'out'|'err'; data: string; timestamp?; process: { name; pm_id } }
+- Pm2Metrics { totalCpu; totalMem; processes }
+
+## PATTERN
+```ts
+import { Pm2Client } from '@mostajs/pm2/server';
+const pm2 = new Pm2Client();
+await pm2.connect();
+const procs = await pm2.list();
+await pm2.restart('octonet');
+await pm2.disconnect();
+```
+Montage sur des routes d'API :
+```ts
+import { createPm2Handlers } from '@mostajs/pm2/server';
+const h = createPm2Handlers();
+export const GET = () => h.listProcesses();   // renvoie un Response
+```
+
+## DÉPEND DE
+Aucun module @mostajs/*. Peer optionnel: pm2 (>=5.0.0) — requis à l'exécution pour les opérations réelles.
+
+## PIÈGES
+- pm2 est un peer OPTIONNEL : sans le paquet pm2 installé, les méthodes du client échouent à l'exécution.
+- Appeler connect() avant toute opération et disconnect() à la fin ; isConnected reflète l'état.
+- Importer Pm2Client et les handlers depuis /server ; la racine n'expose que des types.
+- createPm2Handlers retourne des objets Response (Fetch API) — à brancher directement sur des routes type Next.js App Router.
+- describe(name) renvoie null si le process n'existe pas — tester le retour.
+
+## RÉFÉRENCES
+- README.md
+- test-scripts/test-unit.ts
